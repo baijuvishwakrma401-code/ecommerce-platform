@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface text-ink font-sans antialiased;
+    font-feature-settings: "ss01" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display text-ink;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: theme("colors.accent.soft");
+    color: theme("colors.accent.hover");
+  }
+
+  /* Mobile-first: comfortable tap targets everywhere by default */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* prevents iOS auto-zoom on focus */
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition-colors
+      disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px];
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-hover;
+  }
+
+  .btn-secondary {
+    @apply btn border border-surface-border bg-white text-ink hover:bg-surface-muted;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-soft hover:bg-surface-subtle;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-ink-soft;
+  }
+
+  .field-input {
+    @apply w-full rounded-lg border border-surface-border bg-white px-4 py-3 text-ink placeholder:text-ink-muted
+      focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 min-h-[44px];
+  }
+
+  .field-error {
+    @apply mt-1 text-sm text-danger;
+  }
+
+  .card {
+    @apply rounded-lg border border-surface-border bg-white shadow-card;
+  }
+}
