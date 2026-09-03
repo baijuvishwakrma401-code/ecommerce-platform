@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/lib/validation/auth";
 import { AuthShell } from "@/components/auth/auth-shell";
 
-export default function CustomerLoginPage() {
+function CustomerLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -97,5 +97,12 @@ export default function CustomerLoginPage() {
         </button>
       </form>
     </AuthShell>
+  );
+}
+export default function CustomerLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <CustomerLoginForm />
+    </Suspense>
   );
 }
