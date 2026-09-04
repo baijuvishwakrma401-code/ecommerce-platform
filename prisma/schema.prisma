@@ -35,8 +35,8 @@ model User {
   passwordResetToken   String?   @unique
   passwordResetExpires DateTime?
 
-  @@map("users")
   @@index([email])
+  @@map("users")
 }
 
 // ---------------------------------------------------------------------------
@@ -58,8 +58,8 @@ model Role {
 }
 
 model Permission {
-  id          String @id @default(cuid())
-  key         String @unique // e.g. "products.manage", "orders.manage"
+  id          String  @id @default(cuid())
+  key         String  @unique // e.g. "products.manage", "orders.manage"
   description String?
 
   roles RolePermission[]
@@ -88,12 +88,12 @@ model AdminUser {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
-  @@map("admin_users")
   @@index([email])
+  @@map("admin_users")
 }
 
 // ---------------------------------------------------------------------------
@@ -102,13 +102,76 @@ model AdminUser {
 // ---------------------------------------------------------------------------
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  actorId    String
-  actorType  String // "ADMIN" | "CUSTOMER"
-  action     String // e.g. "ADMIN_LOGIN", "ADMIN_LOGIN_FAILED"
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  actorId   String
+  actorType String // "ADMIN" | "CUSTOMER"
+  action    String // e.g. "ADMIN_LOGIN", "ADMIN_LOGIN_FAILED"
+  metadata  Json?
+  createdAt DateTime @default(now())
 
-  @@map("audit_logs")
   @@index([actorId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// PHASE 2 — PRODUCT CATALOG
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean @default(true)
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  sku         String  @unique
+
+  price          Decimal  @db.Decimal(12, 2)
+  compareAtPrice Decimal? @db.Decimal(12, 2)
+  stock          Int      @default(0)
+
+  isActive   Boolean @default(true)
+  isFeatured Boolean @default(false)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  images ProductImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  url       String
+  altText   String?
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@map("product_images")
 }
