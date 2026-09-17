@@ -1,0 +1,223 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #171512;
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  text-decoration: none;
+}
+
+.container-page {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+@media (min-width: 640px) {
+  .container-page {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-page {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+
+/* Cards */
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e7e4dd;
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(23, 21, 18, 0.04),
+    0 8px 24px -12px rgba(23, 21, 18, 0.1);
+}
+
+/* Buttons */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #b5502e;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #9c4126;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid #e7e4dd;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #171512;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #faf9f7;
+  border-color: #d8d4cc;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  color: #4a4640;
+  font-size: 14px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: #f3f1ed;
+  color: #171512;
+}
+
+/* Form */
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #4a4640;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #e7e4dd;
+  border-radius: 10px;
+  outline: none;
+  background: #ffffff;
+  color: #171512;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.field-input::placeholder {
+  color: #aaa49b;
+}
+
+.field-input:focus {
+  border-color: #b5502e;
+  box-shadow: 0 0 0 3px rgba(181, 80, 46, 0.1);
+}
+
+.field-error {
+  margin-top: 5px;
+  color: #b3261e;
+  font-size: 12px;
+}
+
+/* Auth animation */
+
+.auth-card {
+  animation: authFade 0.45s ease both;
+}
+
+@keyframes authFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 639px) {
+  .container-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    min-height: 44px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .card {
+    border-radius: 14px;
+  }
+}
+
+/* Extra small screens */
+
+@media (max-width: 380px) {
+  .container-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    font-size: 13px;
+  }
+}

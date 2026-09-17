@@ -1,31 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+type Params = {
+  params: Promise<{ id: string }>;
+};
+
+export async function PUT(
+  request: Request,
+  { params }: Params
+) {
   try {
-    const products = await prisma.product.findMany({
-      include: {
-        category: true,
-        images: {
-          orderBy: { sortOrder: "asc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return NextResponse.json({ products });
-  } catch (error) {
-    console.error("[PRODUCTS_GET_ERROR]", error);
-
-    return NextResponse.json(
-      { error: "Failed to load products." },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: Request) {
-  try {
+    const { id } = await params;
     const body = await request.json();
 
     const name = String(body.name || "").trim();
@@ -79,6 +64,7 @@ export async function POST(request: Request) {
     const existingProduct = await prisma.product.findFirst({
       where: {
         OR: [{ slug }, { sku }],
+        NOT: { id },
       },
     });
 
@@ -86,13 +72,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "A product with this slug or SKU already exists.",
+            "Another product with this slug or SKU already exists.",
         },
         { status: 409 }
       );
     }
 
-    const product = await prisma.product.create({
+    const product = await prisma.product.update({
+      where: { id },
       data: {
         name,
         slug,
@@ -105,43 +92,84 @@ export async function POST(request: Request) {
         isFeatured: body.isFeatured === true,
         categoryId,
       },
-      include: {
-        category: true,
-        images: true,
-      },
     });
 
     if (imageUrl) {
-      await prisma.productImage.create({
-        data: {
-          url: imageUrl,
-          altText: name,
-          sortOrder: 0,
-          isPrimary: true,
-          productId: product.id,
-        },
-      });
+      const existingPrimary =
+        await prisma.productImage.findFirst({
+          where: {
+            productId: id,
+            isPrimary: true,
+          },
+        });
+
+      if (existingPrimary) {
+        await prisma.productImage.update({
+          where: {
+            id: existingPrimary.id,
+          },
+          data: {
+            url: imageUrl,
+            altText: name,
+          },
+        });
+      } else {
+        await prisma.productImage.create({
+          data: {
+            url: imageUrl,
+            altText: name,
+            sortOrder: 0,
+            isPrimary: true,
+            productId: id,
+          },
+        });
+      }
     }
 
-    const finalProduct = await prisma.product.findUnique({
-      where: { id: product.id },
-      include: {
-        category: true,
-        images: {
-          orderBy: { sortOrder: "asc" },
+    const finalProduct =
+      await prisma.product.findUnique({
+        where: { id },
+        include: {
+          category: true,
+          images: {
+            orderBy: { sortOrder: "asc" },
+          },
         },
-      },
+      });
+
+    return NextResponse.json({
+      product: finalProduct,
+    });
+  } catch (error) {
+    console.error("[PRODUCTS_PUT_ERROR]", error);
+
+    return NextResponse.json(
+      { error: "Failed to update product." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: Params
+) {
+  try {
+    const { id } = await params;
+
+    await prisma.product.delete({
+      where: { id },
     });
 
-    return NextResponse.json(
-      { product: finalProduct },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      message: "Product deleted successfully.",
+    });
   } catch (error) {
-    console.error("[PRODUCTS_POST_ERROR]", error);
+    console.error("[PRODUCTS_DELETE_ERROR]", error);
 
     return NextResponse.json(
-      { error: "Failed to create product." },
+      { error: "Failed to delete product." },
       { status: 500 }
     );
   }
