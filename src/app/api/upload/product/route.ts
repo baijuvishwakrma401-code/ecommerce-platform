@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   try {
@@ -27,24 +27,43 @@ export async function POST(request: Request) {
       );
     }
 
-    const extension = file.name.split(".").pop() || "jpg";
+    const extension =
+      file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+    const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+
+    if (!allowedExtensions.includes(extension)) {
+      return NextResponse.json(
+        {
+          error:
+            "Only JPG, JPEG, PNG and WebP images are allowed.",
+        },
+        { status: 400 }
+      );
+    }
+
     const fileName = `${crypto.randomUUID()}.${extension}`;
     const filePath = `products/${fileName}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const { error } = await supabase.storage
+    const supabase = getSupabase();
+
+    const { error: uploadError } = await supabase.storage
       .from("product-images")
       .upload(filePath, buffer, {
         contentType: file.type,
         upsert: false,
       });
 
-    if (error) {
-      console.error("[PRODUCT_IMAGE_UPLOAD_ERROR]", error);
+    if (uploadError) {
+      console.error(
+        "[PRODUCT_IMAGE_UPLOAD_ERROR]",
+        uploadError
+      );
 
       return NextResponse.json(
-        { error: error.message },
+        { error: uploadError.message },
         { status: 500 }
       );
     }
@@ -54,13 +73,22 @@ export async function POST(request: Request) {
       .getPublicUrl(filePath);
 
     return NextResponse.json({
+      success: true,
       url: data.publicUrl,
     });
   } catch (error) {
-    console.error("[PRODUCT_IMAGE_UPLOAD_ERROR]", error);
+    console.error(
+      "[PRODUCT_IMAGE_UPLOAD_ERROR]",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Image upload failed." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Image upload failed.",
+      },
       { status: 500 }
     );
   }
