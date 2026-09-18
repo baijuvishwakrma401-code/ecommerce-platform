@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   ShoppingBag,
@@ -22,7 +22,22 @@ import {
   ChevronRight,
   ArrowRight,
   Plus,
+  ChevronLeft,
 } from "lucide-react";
+
+type Banner = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  imageUrl: string;
+  mobileImageUrl: string | null;
+  buttonText: string | null;
+  linkUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+};
 
 const quickActions = [
   {
@@ -144,11 +159,130 @@ const productTabs = [
   "New",
 ];
 
+const fallbackBanner: Banner = {
+  id: "fallback-banner",
+  title: "Fresh styles. Everyday confidence.",
+  subtitle:
+    "Discover premium pieces designed to fit effortlessly into your everyday wardrobe.",
+  imageUrl:
+    "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1400&q=85",
+  mobileImageUrl: null,
+  buttonText: "Shop collection",
+  linkUrl: "/shop",
+  sortOrder: 0,
+  isActive: true,
+  startsAt: null,
+  endsAt: null,
+};
+
+function isBannerCurrentlyVisible(banner: Banner) {
+  if (!banner.isActive) {
+    return false;
+  }
+
+  const now = new Date();
+
+  if (banner.startsAt) {
+    const startsAt = new Date(banner.startsAt);
+
+    if (startsAt > now) {
+      return false;
+    }
+  }
+
+  if (banner.endsAt) {
+    const endsAt = new Date(banner.endsAt);
+
+    if (endsAt < now) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState("All");
+
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [bannerLoading, setBannerLoading] = useState(true);
+  const [activeBanner, setActiveBanner] = useState(0);
+
+  const visibleBanners = useMemo(() => {
+    return banners
+      .filter(isBannerCurrentlyVisible)
+      .sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) {
+          return a.sortOrder - b.sortOrder;
+        }
+
+        return a.id.localeCompare(b.id);
+      });
+  }, [banners]);
+
+  const displayBanners =
+    visibleBanners.length > 0
+      ? visibleBanners
+      : [fallbackBanner];
+
+  useEffect(() => {
+    async function loadBanners() {
+      try {
+        const response = await fetch("/api/banners", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load banners");
+        }
+
+        const data = await response.json();
+
+        setBanners(
+          Array.isArray(data.banners) ? data.banners : []
+        );
+      } catch (error) {
+        console.error("Homepage banner error:", error);
+        setBanners([]);
+      } finally {
+        setBannerLoading(false);
+      }
+    }
+
+    loadBanners();
+  }, []);
+
+  useEffect(() => {
+    if (displayBanners.length <= 1) {
+      setActiveBanner(0);
+      return;
+    }
+
+    if (activeBanner >= displayBanners.length) {
+      setActiveBanner(0);
+    }
+  }, [displayBanners.length, activeBanner]);
+
+  useEffect(() => {
+    if (displayBanners.length <= 1) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveBanner((current) =>
+        current + 1 >= displayBanners.length
+          ? 0
+          : current + 1
+      );
+    }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [displayBanners.length]);
 
   const toggleWishlist = (id: number) => {
     setWishlist((current) =>
@@ -157,6 +291,25 @@ export default function HomePage() {
         : [...current, id]
     );
   };
+
+  const goToPreviousBanner = () => {
+    setActiveBanner((current) =>
+      current === 0
+        ? displayBanners.length - 1
+        : current - 1
+    );
+  };
+
+  const goToNextBanner = () => {
+    setActiveBanner((current) =>
+      current + 1 >= displayBanners.length
+        ? 0
+        : current + 1
+    );
+  };
+
+  const currentBanner =
+    displayBanners[activeBanner] || fallbackBanner;
 
   return (
     <main className="min-h-screen bg-[#f8f8f6] text-[#171512] pb-20 md:pb-0">
@@ -177,21 +330,27 @@ export default function HomePage() {
             </Link>
 
             <nav className="flex items-center gap-7 text-sm font-medium text-[#4a4640]">
-              <Link href="/" className="transition hover:text-[#b5502e]">
+              <Link
+                href="/"
+                className="transition hover:text-[#b5502e]"
+              >
                 Home
               </Link>
+
               <Link
                 href="/shop"
                 className="transition hover:text-[#b5502e]"
               >
                 Shop
               </Link>
+
               <Link
                 href="/categories"
                 className="transition hover:text-[#b5502e]"
               >
                 Categories
               </Link>
+
               <Link
                 href="/new-arrivals"
                 className="transition hover:text-[#b5502e]"
@@ -202,7 +361,9 @@ export default function HomePage() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setSearchOpen((v) => !v)}
+                onClick={() =>
+                  setSearchOpen((value) => !value)
+                }
                 className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#f3f1ed]"
                 aria-label="Search"
               >
@@ -221,6 +382,7 @@ export default function HomePage() {
                 aria-label="Wishlist"
               >
                 <Heart size={19} />
+
                 {wishlist.length > 0 && (
                   <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#b5502e] px-1 text-[9px] font-bold text-white">
                     {wishlist.length}
@@ -233,6 +395,7 @@ export default function HomePage() {
                 className="relative flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#f3f1ed]"
               >
                 <ShoppingBag size={19} />
+
                 <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#b5502e] px-1 text-[9px] font-bold text-white">
                   0
                 </span>
@@ -247,6 +410,7 @@ export default function HomePage() {
                   size={18}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-[#847e73]"
                 />
+
                 <input
                   autoFocus
                   type="text"
@@ -291,6 +455,7 @@ export default function HomePage() {
                 className="relative flex h-9 w-9 items-center justify-center rounded-full"
               >
                 <ShoppingBag size={19} />
+
                 <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#b5502e] px-1 text-[8px] font-bold text-white">
                   0
                 </span>
@@ -343,18 +508,28 @@ export default function HomePage() {
                   className="flex items-center justify-between border-b border-[#f0ede8] py-4 text-[15px] font-medium"
                 >
                   {label}
-                  <ChevronRight size={17} className="text-[#847e73]" />
+
+                  <ChevronRight
+                    size={17}
+                    className="text-[#847e73]"
+                  />
                 </Link>
               ))}
             </nav>
 
             <div className="mt-8 rounded-2xl bg-[#f6e6de] p-5">
-              <Sparkles size={20} className="text-[#b5502e]" />
+              <Sparkles
+                size={20}
+                className="text-[#b5502e]"
+              />
+
               <p className="mt-3 font-display text-lg">
                 Discover something new.
               </p>
+
               <p className="mt-1 text-xs leading-5 text-[#6f685f]">
-                Explore our latest collections and exclusive offers.
+                Explore our latest collections and exclusive
+                offers.
               </p>
             </div>
           </aside>
@@ -370,6 +545,7 @@ export default function HomePage() {
               <p className="text-xs font-medium text-[#847e73]">
                 Good morning 👋
               </p>
+
               <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
                 Hello, Baiju
               </h1>
@@ -377,6 +553,7 @@ export default function HomePage() {
 
             <button className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-[#e9e6df]">
               <Bell size={19} />
+
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#b5502e]" />
             </button>
           </div>
@@ -401,7 +578,10 @@ export default function HomePage() {
         {/* Quick Actions */}
         <section className="mt-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Quick access</h2>
+            <h2 className="text-sm font-semibold">
+              Quick access
+            </h2>
+
             <Link
               href="/shop"
               className="text-xs font-semibold text-[#b5502e]"
@@ -421,7 +601,10 @@ export default function HomePage() {
                   className="flex min-w-[76px] flex-col items-center"
                 >
                   <div className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] bg-white shadow-sm ring-1 ring-[#e9e6df] transition hover:-translate-y-0.5">
-                    <Icon size={21} strokeWidth={1.8} />
+                    <Icon
+                      size={21}
+                      strokeWidth={1.8}
+                    />
                   </div>
 
                   <span className="mt-2 whitespace-nowrap text-[10px] font-medium text-[#4a4640]">
@@ -441,7 +624,10 @@ export default function HomePage() {
                 <Wallet size={16} />
               </div>
 
-              <Plus size={16} className="text-white/50" />
+              <Plus
+                size={16}
+                className="text-white/50"
+              />
             </div>
 
             <p className="mt-4 text-[10px] font-medium text-white/55">
@@ -456,10 +642,16 @@ export default function HomePage() {
           <div className="rounded-2xl bg-[#f6e6de] p-4">
             <div className="flex items-center justify-between">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/70">
-                <Sparkles size={16} className="text-[#b5502e]" />
+                <Sparkles
+                  size={16}
+                  className="text-[#b5502e]"
+                />
               </div>
 
-              <ChevronRight size={16} className="text-[#847e73]" />
+              <ChevronRight
+                size={16}
+                className="text-[#847e73]"
+              />
             </div>
 
             <p className="mt-4 text-[10px] font-medium text-[#847e73]">
@@ -475,7 +667,10 @@ export default function HomePage() {
         {/* Brands */}
         <section className="mt-7">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Curated brands</h2>
+            <h2 className="text-sm font-semibold">
+              Curated brands
+            </h2>
+
             <button className="text-xs font-semibold text-[#b5502e]">
               View all
             </button>
@@ -493,51 +688,126 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Featured Banner */}
+        {/* Dynamic Featured Banner */}
         <section className="mt-7">
           <div className="relative min-h-[220px] overflow-hidden rounded-[24px] bg-[#171512]">
-            <img
-              src="https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1400&q=85"
-              alt="New collection"
-              className="absolute inset-0 h-full w-full object-cover opacity-55"
-            />
+            {bannerLoading ? (
+              <div className="flex min-h-[220px] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+              </div>
+            ) : (
+              <>
+                <picture>
+                  {currentBanner.mobileImageUrl && (
+                    <source
+                      media="(max-width: 767px)"
+                      srcSet={
+                        currentBanner.mobileImageUrl
+                      }
+                    />
+                  )}
 
-            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/10" />
+                  <img
+                    key={currentBanner.id}
+                    src={currentBanner.imageUrl}
+                    alt={
+                      currentBanner.title ||
+                      "Featured banner"
+                    }
+                    className="absolute inset-0 h-full w-full object-cover opacity-55"
+                  />
+                </picture>
 
-            <div className="relative flex min-h-[220px] max-w-[500px] flex-col justify-center p-6 text-white sm:p-8">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">
-                New season
-              </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/10" />
 
-              <h2 className="mt-2 font-display text-3xl leading-[1.05] tracking-tight sm:text-4xl">
-                Fresh styles.
-                <br />
-                Everyday confidence.
-              </h2>
+                <div className="relative flex min-h-[220px] max-w-[560px] flex-col justify-center p-6 text-white sm:p-8">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">
+                    Featured
+                  </span>
 
-              <p className="mt-3 max-w-[330px] text-xs leading-5 text-white/70">
-                Discover premium pieces designed to fit effortlessly into your
-                everyday wardrobe.
-              </p>
+                  <h2 className="mt-2 font-display text-3xl leading-[1.05] tracking-tight sm:text-4xl">
+                    {currentBanner.title}
+                  </h2>
 
-              <Link
-                href="/shop"
-                className="mt-5 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-semibold text-[#171512] transition hover:bg-white/90"
-              >
-                Shop collection
-                <ArrowRight size={15} />
-              </Link>
-            </div>
+                  {currentBanner.subtitle && (
+                    <p className="mt-3 max-w-[360px] text-xs leading-5 text-white/70">
+                      {currentBanner.subtitle}
+                    </p>
+                  )}
+
+                  {currentBanner.buttonText && (
+                    <Link
+                      href={
+                        currentBanner.linkUrl ||
+                        "/shop"
+                      }
+                      className="mt-5 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-semibold text-[#171512] transition hover:bg-white/90"
+                    >
+                      {currentBanner.buttonText}
+                      <ArrowRight size={15} />
+                    </Link>
+                  )}
+                </div>
+
+                {displayBanners.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={goToPreviousBanner}
+                      aria-label="Previous banner"
+                      className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={goToNextBanner}
+                      aria-label="Next banner"
+                      className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition hover:bg-white/25"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+
+                    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+                      {displayBanners.map(
+                        (banner, index) => (
+                          <button
+                            key={banner.id}
+                            type="button"
+                            onClick={() =>
+                              setActiveBanner(index)
+                            }
+                            aria-label={`Go to banner ${
+                              index + 1
+                            }`}
+                            className={`h-1.5 rounded-full transition-all ${
+                              index === activeBanner
+                                ? "w-6 bg-white"
+                                : "w-1.5 bg-white/50"
+                            }`}
+                          />
+                        )
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </section>
 
         {/* Popular Products */}
-        <section id="popular-products" className="mt-8 scroll-mt-24">
+        <section
+          id="popular-products"
+          className="mt-8 scroll-mt-24"
+        >
           <div className="flex items-end justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#b5502e]">
                 Trending now
               </p>
+
               <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight">
                 Popular products
               </h2>
@@ -571,12 +841,21 @@ export default function HomePage() {
           {/* Products Grid */}
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((product) => {
-              const liked = wishlist.includes(product.id);
+              const liked = wishlist.includes(
+                product.id
+              );
+
+              const slug = product.name
+                .toLowerCase()
+                .replaceAll(" ", "-");
 
               return (
-                <article key={product.id} className="group min-w-0">
+                <article
+                  key={product.id}
+                  className="group min-w-0"
+                >
                   <div className="relative overflow-hidden rounded-2xl bg-[#efede8]">
-                    <Link href={`/product/${product.name.toLowerCase().replaceAll(" ", "-")}`}>
+                    <Link href={`/product/${slug}`}>
                       <div className="aspect-[0.82] w-full">
                         <img
                           src={product.image}
@@ -591,15 +870,23 @@ export default function HomePage() {
                     </span>
 
                     <button
-                      onClick={() => toggleWishlist(product.id)}
+                      onClick={() =>
+                        toggleWishlist(product.id)
+                      }
                       className={`absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-sm transition ${
-                        liked ? "text-[#b5502e]" : "text-[#4a4640]"
+                        liked
+                          ? "text-[#b5502e]"
+                          : "text-[#4a4640]"
                       }`}
                       aria-label="Add to wishlist"
                     >
                       <Heart
                         size={15}
-                        fill={liked ? "currentColor" : "none"}
+                        fill={
+                          liked
+                            ? "currentColor"
+                            : "none"
+                        }
                       />
                     </button>
                   </div>
@@ -610,9 +897,7 @@ export default function HomePage() {
                     </p>
 
                     <Link
-                      href={`/product/${product.name
-                        .toLowerCase()
-                        .replaceAll(" ", "-")}`}
+                      href={`/product/${slug}`}
                       className="mt-1 block truncate text-xs font-semibold text-[#171512] transition hover:text-[#b5502e]"
                     >
                       {product.name}
@@ -624,9 +909,11 @@ export default function HomePage() {
                         fill="currentColor"
                         className="text-[#b7791e]"
                       />
+
                       <span className="text-[9px] font-medium">
                         {product.rating}
                       </span>
+
                       <span className="text-[9px] text-[#aaa49b]">
                         ({product.reviews})
                       </span>
@@ -634,11 +921,17 @@ export default function HomePage() {
 
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-sm font-bold">
-                        ₹{product.price.toLocaleString("en-IN")}
+                        ₹
+                        {product.price.toLocaleString(
+                          "en-IN"
+                        )}
                       </span>
 
                       <span className="text-[10px] text-[#aaa49b] line-through">
-                        ₹{product.oldPrice.toLocaleString("en-IN")}
+                        ₹
+                        {product.oldPrice.toLocaleString(
+                          "en-IN"
+                        )}
                       </span>
                     </div>
                   </div>
@@ -665,18 +958,25 @@ export default function HomePage() {
               <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#667060]">
                 Exclusive
               </p>
+
               <h3 className="mt-2 max-w-[190px] font-display text-xl font-semibold">
                 Members get extra rewards
               </h3>
+
               <Link
                 href="/account"
                 className="mt-4 inline-flex items-center gap-1 text-[11px] font-bold"
               >
-                Join now <ArrowRight size={13} />
+                Join now
+                <ArrowRight size={13} />
               </Link>
             </div>
 
-            <Crown size={58} strokeWidth={1} className="mr-2 text-[#667060]" />
+            <Crown
+              size={58}
+              strokeWidth={1}
+              className="mr-2 text-[#667060]"
+            />
           </div>
 
           <div className="flex min-h-[150px] items-center justify-between overflow-hidden rounded-2xl bg-[#f3eee6] p-5">
@@ -684,18 +984,25 @@ export default function HomePage() {
               <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#847e73]">
                 Gift cards
               </p>
+
               <h3 className="mt-2 max-w-[190px] font-display text-xl font-semibold">
                 Give them something special
               </h3>
+
               <Link
                 href="/shop"
                 className="mt-4 inline-flex items-center gap-1 text-[11px] font-bold"
               >
-                Explore <ArrowRight size={13} />
+                Explore
+                <ArrowRight size={13} />
               </Link>
             </div>
 
-            <Gift size={58} strokeWidth={1} className="mr-2 text-[#847e73]" />
+            <Gift
+              size={58}
+              strokeWidth={1}
+              className="mr-2 text-[#847e73]"
+            />
           </div>
         </section>
       </div>
@@ -713,8 +1020,8 @@ export default function HomePage() {
               </Link>
 
               <p className="mt-4 max-w-[260px] text-xs leading-5 text-[#847e73]">
-                Thoughtfully selected products for everyday life, delivered
-                with care.
+                Thoughtfully selected products for everyday
+                life, delivered with care.
               </p>
             </div>
 
@@ -724,10 +1031,21 @@ export default function HomePage() {
               </h3>
 
               <div className="mt-4 flex flex-col gap-3 text-xs text-[#6f685f]">
-                <Link href="/shop">All Products</Link>
-                <Link href="/new-arrivals">New Arrivals</Link>
-                <Link href="/categories">Categories</Link>
-                <Link href="/shop">Best Deals</Link>
+                <Link href="/shop">
+                  All Products
+                </Link>
+
+                <Link href="/new-arrivals">
+                  New Arrivals
+                </Link>
+
+                <Link href="/categories">
+                  Categories
+                </Link>
+
+                <Link href="/shop">
+                  Best Deals
+                </Link>
               </div>
             </div>
 
@@ -737,10 +1055,21 @@ export default function HomePage() {
               </h3>
 
               <div className="mt-4 flex flex-col gap-3 text-xs text-[#6f685f]">
-                <Link href="/contact">Contact Us</Link>
-                <Link href="/shipping">Shipping</Link>
-                <Link href="/returns">Returns</Link>
-                <Link href="/account">My Account</Link>
+                <Link href="/contact">
+                  Contact Us
+                </Link>
+
+                <Link href="/shipping">
+                  Shipping
+                </Link>
+
+                <Link href="/returns">
+                  Returns
+                </Link>
+
+                <Link href="/account">
+                  My Account
+                </Link>
               </div>
             </div>
 
@@ -750,8 +1079,8 @@ export default function HomePage() {
               </h3>
 
               <p className="mt-4 text-xs leading-5 text-[#847e73]">
-                Get updates about new collections, offers and exclusive
-                rewards.
+                Get updates about new collections, offers
+                and exclusive rewards.
               </p>
 
               <div className="mt-4 flex gap-2">
@@ -760,6 +1089,7 @@ export default function HomePage() {
                   placeholder="Your email"
                   className="h-10 min-w-0 flex-1 rounded-lg border border-[#e7e4dd] px-3 text-xs outline-none focus:border-[#b5502e]"
                 />
+
                 <button className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#171512] text-white">
                   <ArrowRight size={15} />
                 </button>
@@ -768,7 +1098,8 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10 border-t border-[#eeeae3] pt-5 text-[10px] text-[#aaa49b]">
-            © {new Date().getFullYear()} STORE. All rights reserved.
+            © {new Date().getFullYear()} STORE. All
+            rights reserved.
           </div>
         </div>
       </footer>
@@ -781,7 +1112,10 @@ export default function HomePage() {
             className="flex min-w-[54px] flex-col items-center gap-1 py-1 text-[#b5502e]"
           >
             <ShoppingBag size={18} />
-            <span className="text-[9px] font-semibold">Home</span>
+
+            <span className="text-[9px] font-semibold">
+              Home
+            </span>
           </Link>
 
           <Link
@@ -789,7 +1123,10 @@ export default function HomePage() {
             className="flex min-w-[54px] flex-col items-center gap-1 py-1 text-[#847e73]"
           >
             <Menu size={18} />
-            <span className="text-[9px] font-medium">Categories</span>
+
+            <span className="text-[9px] font-medium">
+              Categories
+            </span>
           </Link>
 
           <Link
@@ -797,24 +1134,33 @@ export default function HomePage() {
             className="flex min-w-[54px] flex-col items-center gap-1 py-1 text-[#847e73]"
           >
             <MessageCircle size={18} />
-            <span className="text-[9px] font-medium">Messages</span>
+
+            <span className="text-[9px] font-medium">
+              Messages
+            </span>
           </Link>
 
           <button
             onClick={() =>
               document
                 .getElementById("popular-products")
-                ?.scrollIntoView({ behavior: "smooth" })
+                ?.scrollIntoView({
+                  behavior: "smooth",
+                })
             }
             className="relative flex min-w-[54px] flex-col items-center gap-1 py-1 text-[#847e73]"
           >
             <Heart size={18} />
+
             {wishlist.length > 0 && (
               <span className="absolute right-2 top-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[#b5502e] px-1 text-[7px] font-bold text-white">
                 {wishlist.length}
               </span>
             )}
-            <span className="text-[9px] font-medium">Wishlist</span>
+
+            <span className="text-[9px] font-medium">
+              Wishlist
+            </span>
           </button>
 
           <button
@@ -822,7 +1168,10 @@ export default function HomePage() {
             className="flex min-w-[54px] flex-col items-center gap-1 py-1 text-[#847e73]"
           >
             <MoreHorizontal size={18} />
-            <span className="text-[9px] font-medium">More</span>
+
+            <span className="text-[9px] font-medium">
+              More
+            </span>
           </button>
         </div>
       </nav>

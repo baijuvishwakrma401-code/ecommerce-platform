@@ -256,3 +256,107 @@ model OrderItem {
   @@index([productId])
   @@map("order_items")
 }
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  group     String   @default("general")
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([group])
+  @@index([isPublic])
+  @@map("site_settings")
+}
+
+model ThemeConfig {
+  id             String   @id @default(cuid())
+  name           String   @default("Default Theme")
+  primaryColor   String   @default("#171717")
+  secondaryColor String   @default("#f8f7f4")
+  accentColor    String   @default("#b5502e")
+  textColor      String   @default("#171717")
+  headingFont    String   @default("serif")
+  bodyFont       String   @default("sans")
+  borderRadius   String   @default("medium")
+  buttonStyle    String   @default("rounded")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("theme_configs")
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled])
+  @@map("feature_flags")
+}
+
+model Banner {
+  id             String    @id @default(cuid())
+  title          String
+  subtitle       String?
+  imageUrl       String
+  mobileImageUrl String?
+  buttonText     String?
+  linkUrl        String?
+  sortOrder      Int       @default(0)
+  isActive       Boolean   @default(true)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@index([startsAt])
+  @@index([endsAt])
+  @@map("banners")
+}
+
+model NavigationMenu {
+  id        String           @id @default(cuid())
+  name      String
+  location  String           @unique
+  isActive  Boolean          @default(true)
+  items     NavigationItem[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("navigation_menus")
+}
+
+model NavigationItem {
+  id        String  @id @default(cuid())
+  label     String
+  url       String
+  icon      String?
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  menuId String
+  menu   NavigationMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   NavigationItem?  @relation("NavigationItemChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children NavigationItem[] @relation("NavigationItemChildren")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([menuId])
+  @@index([parentId])
+  @@index([sortOrder])
+  @@map("navigation_items")
+}
