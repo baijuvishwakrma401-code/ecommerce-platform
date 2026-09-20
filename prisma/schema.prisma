@@ -124,6 +124,8 @@ model Category {
   slug        String  @unique
   description String?
   imageUrl    String?
+  icon        String?
+  sortOrder   Int     @default(0)
   isActive    Boolean @default(true)
 
   products Product[]
@@ -131,6 +133,8 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isActive])
+  @@index([sortOrder])
   @@map("categories")
 }
 
