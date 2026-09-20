@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   Save,
+  Upload,
   Sparkles,
   Shirt,
   Smartphone,
@@ -97,6 +98,7 @@ export default function CategoriesPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -167,6 +169,7 @@ export default function CategoriesPage() {
     setIsActive(true);
     setEditingCategory(null);
     setShowForm(false);
+    setUploadingImage(false);
   }
 
   function openAddForm() {
@@ -210,6 +213,72 @@ export default function CategoriesPage() {
     if (!editingCategory && (!slug || slug === previousAutoSlug)) {
       setSlug(createSlug(value));
     }
+  }
+
+  async function handleCategoryImageUpload(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    setError("");
+    setSuccess("");
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image size 2MB se kam honi chahiye.");
+      event.target.value = "";
+      return;
+    }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/svg+xml",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Sirf JPG, PNG, WEBP ya SVG image upload kar sakte hain.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload/category", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Image upload failed.");
+      }
+
+      setImageUrl(data.url);
+      setSuccess("Category image upload ho gayi.");
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Category image upload nahi ho paayi."
+      );
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
+    }
+  }
+
+  function removeCategoryImage() {
+    setImageUrl("");
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -260,7 +329,9 @@ export default function CategoriesPage() {
       if (!res.ok) {
         throw new Error(
           data.error ||
-            `Category ${editingCategory ? "update" : "create"} failed`
+            `Category ${
+              editingCategory ? "update" : "create"
+            } failed`
         );
       }
 
@@ -398,7 +469,6 @@ export default function CategoriesPage() {
   return (
     <main className="min-h-screen bg-[#f7f7f5]">
       <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -503,9 +573,20 @@ export default function CategoriesPage() {
                     key={category.id}
                     className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:px-6"
                   >
-                    {/* Icon */}
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
-                      <CategoryIcon size={25} strokeWidth={1.8} />
+                    {/* Icon / Custom Image */}
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-100 text-gray-700">
+                      {category.imageUrl ? (
+                        <img
+                          src={category.imageUrl}
+                          alt={category.name}
+                          className="h-full w-full object-contain p-2"
+                        />
+                      ) : (
+                        <CategoryIcon
+                          size={25}
+                          strokeWidth={1.8}
+                        />
+                      )}
                     </div>
 
                     {/* Details */}
@@ -524,6 +605,12 @@ export default function CategoriesPage() {
                         >
                           {category.isActive ? "Active" : "Inactive"}
                         </span>
+
+                        {category.imageUrl && (
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                            Custom Image
+                          </span>
+                        )}
                       </div>
 
                       <p className="mt-1 text-sm text-gray-500">
@@ -593,7 +680,6 @@ export default function CategoriesPage() {
       {showForm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-
             {/* Modal Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4 sm:px-6">
               <div>
@@ -718,39 +804,100 @@ export default function CategoriesPage() {
                 </div>
               </div>
 
-              {/* Image URL */}
+              {/* Custom Image Upload */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Image URL
-                  <span className="ml-1 text-xs font-normal text-gray-400">
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">
+                    Custom Category Image
+                  </label>
+
+                  <span className="text-xs text-gray-400">
                     optional
                   </span>
-                </label>
+                </div>
 
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) =>
-                    setImageUrl(e.target.value)
-                  }
-                  placeholder="https://..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black"
-                />
+                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    {/* Preview */}
+                    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt="Category preview"
+                          className="h-full w-full object-contain p-2"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-400">
+                          <Upload size={22} />
+                          <span className="mt-1 text-[10px]">
+                            No Image
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-                {imageUrl && (
-                  <div className="mt-3 h-24 w-24 overflow-hidden rounded-lg border border-gray-200">
-                    <img
-                      src={imageUrl}
-                      alt="Category preview"
-                      className="h-full w-full object-cover"
-                    />
+                    <div className="flex-1">
+                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800">
+                        <Upload size={17} />
+
+                        {uploadingImage
+                          ? "Uploading..."
+                          : "Upload Image"}
+
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          className="hidden"
+                          onChange={
+                            handleCategoryImageUpload
+                          }
+                          disabled={uploadingImage}
+                        />
+                      </label>
+
+                      {imageUrl && (
+                        <button
+                          type="button"
+                          onClick={removeCategoryImage}
+                          className="ml-2 inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                        >
+                          <X size={16} />
+                          Remove
+                        </button>
+                      )}
+
+                      <p className="mt-2 text-xs text-gray-400">
+                        PNG, JPG, WEBP or SVG. Maximum 2MB.
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-400">
+                        Custom image upload karne par homepage
+                        par ye image icon ki jagah show hogi.
+                      </p>
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* Manual Image URL */}
+                <div className="mt-4">
+                  <label className="mb-2 block text-xs font-medium text-gray-600">
+                    Or use Image URL
+                  </label>
+
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) =>
+                      setImageUrl(e.target.value)
+                    }
+                    placeholder="https://..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black"
+                  />
+                </div>
               </div>
 
               {/* Sort + Active */}
               <div className="grid gap-4 sm:grid-cols-2">
-
                 {/* Sort Order */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -814,7 +961,7 @@ export default function CategoriesPage() {
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploadingImage}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Save size={17} />
