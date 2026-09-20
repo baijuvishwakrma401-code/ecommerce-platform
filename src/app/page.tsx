@@ -207,7 +207,7 @@ export default function HomePage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState("All");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>(fallbackCategories);
 
   const [banners, setBanners] = useState<Banner[]>([]);
   const [bannerLoading, setBannerLoading] = useState(true);
@@ -243,12 +243,42 @@ export default function HomePage() {
 
         const data = await response.json();
 
-        setCategories(
-          Array.isArray(data.categories) ? data.categories : []
-        );
+        const apiCategories = Array.isArray(data.categories)
+          ? data.categories
+          : [];
+
+        // Keep the reference categories visible and add
+        // database categories without duplicate names.
+        const mergedCategories = [...fallbackCategories];
+
+        apiCategories.forEach((category: any) => {
+          const categoryName = String(category.name || "").trim();
+
+          if (!categoryName) {
+            return;
+          }
+
+          const alreadyExists = mergedCategories.some(
+            (item) =>
+              String(item.name || "")
+                .trim()
+                .toLowerCase() === categoryName.toLowerCase()
+          );
+
+          if (!alreadyExists) {
+            mergedCategories.push({
+              ...category,
+              icon: category.icon || "sparkles",
+            });
+          }
+        });
+
+        setCategories(mergedCategories);
       } catch (error) {
         console.error("Homepage categories error:", error);
-        setCategories([]);
+
+        // Keep reference categories visible even if the API fails.
+        setCategories(fallbackCategories);
       }
     }
 
@@ -595,7 +625,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-4 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {(categories.length > 0 ? categories : fallbackCategories).map((category) => {
+            {categories.map((category) => {
               const categoryName = String(category.name || "Category");
               const categoryKey = categoryName.toLowerCase();
               const fallbackIcon = String(category.icon || "sparkles");
