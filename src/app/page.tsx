@@ -23,9 +23,7 @@ import {
   BookOpen,
   Bike,
   Gift,
-  Ticket,
   Crown,
-  Zap,
   Wallet,
   Star,
   MessageCircle,
@@ -302,7 +300,7 @@ export default function HomePage() {
       } catch (error) {
         console.error("Homepage categories error:", error);
 
-        // Do NOT show fallback/hardcoded categories.
+        // Never show hardcoded categories.
         setCategories([]);
       } finally {
         setCategoryLoading(false);
@@ -692,11 +690,20 @@ export default function HomePage() {
                     href={`/categories/${category.slug}`}
                     className="flex min-w-[72px] flex-col items-center"
                   >
-                    <div className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] bg-white text-[#4a4640] shadow-sm ring-1 ring-[#e9e6df] transition hover:-translate-y-0.5 hover:text-[#b5502e]">
-                      <Icon
-                        size={22}
-                        strokeWidth={1.7}
-                      />
+                    <div className="flex h-[58px] w-[58px] items-center justify-center overflow-hidden rounded-[18px] bg-white text-[#4a4640] shadow-sm ring-1 ring-[#e9e6df] transition hover:-translate-y-0.5 hover:text-[#b5502e]">
+                      {category.imageUrl ? (
+                        <img
+                          src={category.imageUrl}
+                          alt={category.name}
+                          className="h-8 w-8 object-contain"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <Icon
+                          size={22}
+                          strokeWidth={1.7}
+                        />
+                      )}
                     </div>
 
                     <span className="mt-2 max-w-[72px] truncate text-center text-[10px] font-medium text-[#4a4640]">
@@ -794,9 +801,7 @@ export default function HomePage() {
                   {currentBanner.mobileImageUrl && (
                     <source
                       media="(max-width: 767px)"
-                      srcSet={
-                        currentBanner.mobileImageUrl
-                      }
+                      srcSet={currentBanner.mobileImageUrl}
                     />
                   )}
 
