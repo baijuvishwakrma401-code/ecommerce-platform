@@ -10,7 +10,18 @@ import {
   Menu,
   X,
   Sparkles,
-  Bell,
+  Shirt,
+  Smartphone,
+  Laptop,
+  House,
+  Plug,
+  Gamepad2,
+  Utensils,
+  Car,
+  Dumbbell,
+  Armchair,
+  BookOpen,
+  Bike,
   Gift,
   Ticket,
   Crown,
@@ -39,33 +50,23 @@ type Banner = {
   endsAt: string | null;
 };
 
-const quickActions = [
-  {
-    name: "GreatBuy",
-    icon: ShoppingBag,
-    href: "/shop",
-  },
-  {
-    name: "Flash",
-    icon: Zap,
-    href: "/shop",
-  },
-  {
-    name: "Gift",
-    icon: Gift,
-    href: "/shop",
-  },
-  {
-    name: "Coupon",
-    icon: Ticket,
-    href: "/shop",
-  },
-  {
-    name: "VIP Area",
-    icon: Crown,
-    href: "/shop",
-  },
+const fallbackCategories = [
+  { id: "for-you", name: "For You", slug: "for-you", icon: "sparkles" },
+  { id: "fashion", name: "Fashion", slug: "fashion", icon: "shirt" },
+  { id: "mobiles", name: "Mobiles", slug: "mobiles", icon: "smartphone" },
+  { id: "electronics", name: "Electronics", slug: "electronics", icon: "laptop" },
+  { id: "beauty", name: "Beauty", slug: "beauty", icon: "sparkles" },
+  { id: "home", name: "Home", slug: "home", icon: "house" },
+  { id: "appliances", name: "Appliances", slug: "appliances", icon: "plug" },
+  { id: "toys", name: "Toys", slug: "toys", icon: "gamepad" },
+  { id: "food", name: "Food", slug: "food", icon: "utensils" },
+  { id: "auto-accessories", name: "Auto", slug: "auto-accessories", icon: "car" },
+  { id: "sports", name: "Sports", slug: "sports", icon: "dumbbell" },
+  { id: "furniture", name: "Furniture", slug: "furniture", icon: "armchair" },
+  { id: "books", name: "Books", slug: "books", icon: "book-open" },
+  { id: "2-wheelers", name: "2 Wheelers", slug: "2-wheelers", icon: "bike" },
 ];
+
 
 const brands = [
   "NIKE",
@@ -206,6 +207,7 @@ export default function HomePage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState("All");
+  const [categories, setCategories] = useState<any[]>([]);
 
   const [banners, setBanners] = useState<Banner[]>([]);
   const [bannerLoading, setBannerLoading] = useState(true);
@@ -227,6 +229,31 @@ export default function HomePage() {
     visibleBanners.length > 0
       ? visibleBanners
       : [fallbackBanner];
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const response = await fetch("/api/categories", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load categories");
+        }
+
+        const data = await response.json();
+
+        setCategories(
+          Array.isArray(data.categories) ? data.categories : []
+        );
+      } catch (error) {
+        console.error("Homepage categories error:", error);
+        setCategories([]);
+      }
+    }
+
+    loadCategories();
+  }, []);
 
   useEffect(() => {
     async function loadBanners() {
@@ -538,27 +565,6 @@ export default function HomePage() {
 
       {/* Main */}
       <div className="container-page">
-        {/* Greeting */}
-        <section className="pt-5 md:pt-9">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-[#847e73]">
-                Good morning 👋
-              </p>
-
-              <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                Hello, Baiju
-              </h1>
-            </div>
-
-            <button className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-[#e9e6df]">
-              <Bell size={19} />
-
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#b5502e]" />
-            </button>
-          </div>
-        </section>
-
         {/* Search */}
         <section className="mt-5">
           <div className="relative">
@@ -575,40 +581,56 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Quick Actions */}
+        {/* Categories */}
         <section className="mt-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">
-              Quick access
-            </h2>
+            <h2 className="text-sm font-semibold">Categories</h2>
 
             <Link
-              href="/shop"
+              href="/categories"
               className="text-xs font-semibold text-[#b5502e]"
             >
               See all
             </Link>
           </div>
 
-          <div className="mt-4 flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-            {quickActions.map((item) => {
-              const Icon = item.icon;
+          <div className="mt-4 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {(categories.length > 0 ? categories : fallbackCategories).map((category) => {
+              const categoryName = String(category.name || "Category");
+              const categoryKey = categoryName.toLowerCase();
+              const fallbackIcon = String(category.icon || "sparkles");
+
+              let Icon = Sparkles;
+
+              if (categoryKey.includes("fashion") || fallbackIcon === "shirt") Icon = Shirt;
+              else if (categoryKey.includes("mobile") || fallbackIcon === "smartphone") Icon = Smartphone;
+              else if (categoryKey.includes("electronic") || fallbackIcon === "laptop") Icon = Laptop;
+              else if (categoryKey.includes("home") || fallbackIcon === "house") Icon = House;
+              else if (categoryKey.includes("appliance") || fallbackIcon === "plug") Icon = Plug;
+              else if (categoryKey.includes("toy") || fallbackIcon === "gamepad") Icon = Gamepad2;
+              else if (categoryKey.includes("food") || fallbackIcon === "utensils") Icon = Utensils;
+              else if (categoryKey.includes("auto") || categoryKey.includes("vehicle") || fallbackIcon === "car") Icon = Car;
+              else if (categoryKey.includes("sport") || fallbackIcon === "dumbbell") Icon = Dumbbell;
+              else if (categoryKey.includes("furniture") || fallbackIcon === "armchair") Icon = Armchair;
+              else if (categoryKey.includes("book") || fallbackIcon === "book-open") Icon = BookOpen;
+              else if (categoryKey.includes("2 wheeler") || categoryKey.includes("bike") || fallbackIcon === "bike") Icon = Bike;
+              else if (categoryKey.includes("beauty")) Icon = Sparkles;
+              else if (categoryKey.includes("for you")) Icon = Sparkles;
+
+              const href = "/categories";
 
               return (
                 <Link
-                  key={item.name}
-                  href={item.href}
-                  className="flex min-w-[76px] flex-col items-center"
+                  key={category.id || category.slug || categoryName}
+                  href={href}
+                  className="flex min-w-[72px] flex-col items-center"
                 >
-                  <div className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] bg-white shadow-sm ring-1 ring-[#e9e6df] transition hover:-translate-y-0.5">
-                    <Icon
-                      size={21}
-                      strokeWidth={1.8}
-                    />
+                  <div className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] bg-white text-[#4a4640] shadow-sm ring-1 ring-[#e9e6df] transition hover:-translate-y-0.5 hover:text-[#b5502e]">
+                    <Icon size={22} strokeWidth={1.7} />
                   </div>
 
-                  <span className="mt-2 whitespace-nowrap text-[10px] font-medium text-[#4a4640]">
-                    {item.name}
+                  <span className="mt-2 max-w-[72px] truncate text-center text-[10px] font-medium text-[#4a4640]">
+                    {categoryName}
                   </span>
                 </Link>
               );
